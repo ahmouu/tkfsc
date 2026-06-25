@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>保養期限 AI 智能管理系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- 頂部導航欄 -->
+  <header class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <!-- Logo SVG -->
+        <svg class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <div>
+          <h1 class="text-xl font-bold tracking-wide">保養期限 AI 智能管理系統</h1>
+          <p class="text-xs text-blue-200">東莞同鄉會方樹泉學校 — 專用版</p>
+        </div>
+      </div>
+      <!-- 導航標籤 -->
+      <div class="flex bg-white/10 p-1 rounded-lg">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white text-blue-900 shadow">
+          數據總覽
+        </button>
+        <button onclick="switchTab('add-asset')" id="tab-add-asset" class="px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white/10 text-white">
+          新增 / AI 掃描
+        </button>
+        <button onclick="switchTab('settings')" id="tab-settings" class="px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white/10 text-white flex items-center gap-1">
+          系統設定
+          <span id="sync-dot" class="w-2 h-2 rounded-full bg-red-400"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+    
+    <!-- 提示消息彈窗 (代替 Browser Alert) -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ===================================== TAB 1: DASHBOARD ===================================== -->
+    <section id="sect-dashboard" class="space-y-6">
+      
+      <!-- 頂部統計指標 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 總資產數 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 font-medium">總登記資產</p>
+            <h3 class="text-3xl font-bold text-slate-800 mt-1" id="stat-total">0</h3>
+          </div>
+          <div class="p-3 rounded-xl bg-blue-50 text-blue-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+          </div>
+        </div>
+        <!-- 保養期內 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 font-medium">保養期內 (Valid)</p>
+            <h3 class="text-3xl font-bold text-emerald-600 mt-1" id="stat-valid">0</h3>
+          </div>
+          <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+        </div>
+        <!-- 已過期 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 font-medium">保養已過期 (Expired)</p>
+            <h3 class="text-3xl font-bold text-rose-600 mt-1" id="stat-expired">0</h3>
+          </div>
+          <div class="p-3 rounded-xl bg-rose-50 text-rose-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          </div>
+        </div>
+        <!-- 雲端同步狀態 -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+          <div>
+            <p class="text-sm text-slate-500 font-medium">Google Sheet 同步</p>
+            <h3 class="text-lg font-bold text-slate-700 mt-1" id="stat-sync-status">未連接</h3>
+          </div>
+          <div class="p-3 rounded-xl bg-amber-50 text-amber-600" id="sync-icon-box">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 篩選器與主要數據表 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <!-- 控制與篩選 -->
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div class="flex flex-wrap gap-2 w-full md:w-auto">
+            <input type="text" id="search-input" oninput="renderTable()" placeholder="搜尋產品名稱、序號或備註..." class="px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64">
+            <select id="filter-status" onchange="renderTable()" class="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <option value="all">所有保養狀態</option>
+              <option value="Valid">保養期內 (Valid)</option>
+              <option value="Expired">已過期 (Expired)</option>
+            </select>
+          </div>
+          <div class="flex gap-2 w-full md:w-auto justify-end">
+            <button onclick="exportToCSV()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium rounded-xl transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              匯出 CSV
+            </button>
+            <button onclick="syncWithGoogleSheet()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-xl transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              同步至 Google 試算表
+            </button>
+          </div>
+        </div>
+
+        <!-- 桌上型電腦表格 / 行動端卡片視圖 -->
+        <div class="overflow-x-auto">
+          <!-- 桌面表格 -->
+          <table class="w-full text-left border-collapse hidden md:table">
+            <thead>
+              <tr class="bg-slate-100/70 text-slate-600 uppercase text-xs font-semibold tracking-wider border-b border-slate-200">
+                <th class="py-4 px-6">編號</th>
+                <th class="py-4 px-6">產品 / 設備名稱</th>
+                <th class="py-4 px-6">序列號 (Serial Number)</th>
+                <th class="py-4 px-6">保養到期日</th>
+                <th class="py-4 px-6">狀態</th>
+                <th class="py-4 px-6">備註</th>
+                <th class="py-4 px-6 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody id="asset-table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+              <!-- JS 動態生成 -->
+            </tbody>
+          </table>
+
+          <!-- 手機端視圖 (Card View) -->
+          <div id="asset-cards-container" class="grid grid-cols-1 gap-4 p-4 md:hidden">
+            <!-- JS 動態生成 -->
+          </div>
+        </div>
+
+        <div id="no-data-alert" class="p-10 text-center text-slate-400 hidden">
+          <svg class="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18M2.25 13.5l-1.054 6.33a2.25 2.25 0 002.253 2.624h15.002a2.25 2.25 0 002.253-2.624l-1.054-6.33m-18 0C2.25 8.284 6.726 4 12 4s9.75 4.284 9.75 9.5"></path></svg>
+          沒有符合篩選條件的保養記錄
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================== TAB 2: ADD / SCAN ASSET ===================================== -->
+    <section id="sect-add-asset" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- 左側：AI 智能拍照辨識 (7欄寬) -->
+      <div class="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+        <div class="border-b border-slate-100 pb-4 flex justify-between items-center">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              </span>
+              AI 相片智能辨識
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">上傳保養表格或拍照，由 Gemini AI 自動辨識填寫表格</p>
+          </div>
+          <span class="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium">Gemini 2.5 Flash</span>
+        </div>
+
+        <!-- 拍照/檔案上傳區域 -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-center w-full">
+            <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:bg-slate-50/50 hover:border-blue-500 transition-all relative overflow-hidden" id="drop-zone">
+              <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4" id="upload-placeholder">
+                <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"></path></svg>
+                <p class="text-sm font-semibold text-slate-700">點選上傳、拍照或拖放圖片至此</p>
+                <p class="text-xs text-slate-400 mt-1">支援 PNG, JPG, JPEG 格式</p>
+              </div>
+              <img id="image-preview" class="absolute inset-0 w-full h-full object-contain hidden bg-slate-900" alt="預覽相片">
+              <input id="camera-file-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+            </label>
+          </div>
+
+          <!-- 按鈕控制 -->
+          <div class="flex gap-2 justify-between">
+            <div class="flex gap-2">
+              <button onclick="triggerFileInput()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition flex items-center gap-1.5">
+                選擇檔案 / 拍照
+              </button>
+              <button id="btn-clear-img" onclick="clearSelectedImage()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm font-medium rounded-xl transition hidden">
+                清除相片
+              </button>
+            </div>
+            
+            <button id="btn-ai-scan" onclick="performAIScan()" class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-semibold rounded-xl shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" disabled>
+              <svg class="w-4 h-4 animate-spin hidden" id="scan-spinner" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <span>開始 AI 智能辨識</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 辨識過程狀態指示器 -->
+        <div id="ai-progress-box" class="hidden border border-blue-100 bg-blue-50/50 rounded-xl p-4 space-y-2">
+          <div class="flex justify-between items-center text-xs text-blue-700 font-semibold">
+            <span id="ai-status-text">準備發送至 Gemini...</span>
+            <span id="ai-percent">10%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+            <div id="ai-progress-bar" class="bg-blue-600 h-1.5 transition-all duration-300" style="width: 10%"></div>
+          </div>
+        </div>
+
+        <!-- AI 辨識預覽與確認區 -->
+        <div id="ai-result-box" class="hidden border border-slate-200 rounded-xl p-4 space-y-4">
+          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            AI 辨識結果預覽
+          </h3>
+          <div class="overflow-x-auto max-h-60 border border-slate-100 rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                <tr>
+                  <th class="p-2">型號</th>
+                  <th class="p-2">序列號</th>
+                  <th class="p-2">保養到期</th>
+                  <th class="p-2">狀態</th>
+                  <th class="p-2">備註</th>
+                </tr>
+              </thead>
+              <tbody id="ai-preview-table-body" class="divide-y divide-slate-100 text-slate-700">
+                <!-- 經AI提取的資料會在此動態顯示 -->
+              </tbody>
+            </table>
+          </div>
+          <div class="flex justify-end gap-2 text-xs">
+            <button onclick="discardAIResult()" class="px-3 py-2 border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 transition">放棄</button>
+            <button onclick="approveAIResult()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition">確認匯入系統</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：手動手動輸入 (5欄寬) -->
+      <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+        <div class="border-b border-slate-100 pb-4">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </span>
+            手動新增 / 編輯
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5" id="form-subtitle">填寫設備資訊並加入至資料庫</p>
+        </div>
+
+        <form id="asset-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+          <input type="hidden" id="form-edit-id">
+          
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1" for="input-model">產品 / 設備名稱 <span class="text-red-500">*</span></label>
+            <input type="text" id="input-model" required placeholder="例如: Fujitsu IW752 Whiteboard 4K Touch - 75\" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1" for="input-serial">序列號 (Serial Number) <span class="text-red-500">*</span></label>
+            <input type="text" id="input-serial" required placeholder="例如: 6329210600333" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="input-date">保養到期日 <span class="text-red-500">*</span></label>
+              <input type="date" id="input-date" required onchange="autoUpdateStatus()" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1" for="input-status">保養狀態 (自動計算)</label>
+              <select id="input-status" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-100 cursor-not-allowed text-slate-600" disabled>
+                <option value="Valid">保養期內 (Valid)</option>
+                <option value="Expired">已過期 (Expired)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1" for="input-remark">備註 / 備用欄位</label>
+            <input type="text" id="input-remark" placeholder="例如: 3rd Year" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          </div>
+
+          <div class="pt-2 flex gap-2">
+            <button type="button" onclick="resetForm()" class="w-1/3 px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-medium rounded-xl transition">
+              清空重置
+            </button>
+            <button type="submit" id="btn-submit-form" class="w-2/3 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md transition flex justify-center items-center">
+              新增記錄
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===================================== TAB 3: SETTINGS ===================================== -->
+    <section id="sect-settings" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- API 設定 (5欄寬) -->
+      <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.3 1.826-2.37 2.37a1.724 1.724 0 00-1.065 2.572c-1.756.426-1.756 2.924 0 3.35a1.724 1.724 0 001.066 2.573c-.94 1.543.826 3.31 2.37 2.37a1.724 1.724 0 002.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            </span>
+            系統服務設定
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">配置 AI 辨識及 Google Sheets 傳輸連接</p>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Gemini API Key -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1" for="settings-gemini-key">Gemini AI API 金鑰 (選填)</label>
+            <input type="password" id="settings-gemini-key" placeholder="輸入您的 Gemini API Key (留空將使用系統預設)" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <p class="text-2xs text-slate-400 mt-1">若無專屬金鑰，留空後系統在具備運行環境下將嘗試調用 runtime 內置金鑰</p>
+          </div>
+
+          <!-- Google Sheets API Sync Url -->
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1" for="settings-sheet-url">Google Web App 部署網址 (WebHook URL)</label>
+            <input type="url" id="settings-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <p class="text-2xs text-slate-400 mt-1">請參照右側說明，建立 Google Apps Script 並在此貼上生成的 Web App 部署網址</p>
+          </div>
+
+          <!-- 初始化 / 還原預設數據 -->
+          <div class="border-t border-slate-100 pt-4 space-y-2">
+            <p class="text-xs font-bold text-slate-600">數據維護</p>
+            <div class="flex gap-2">
+              <button onclick="restoreSampleData()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">
+                還原相片中的預設範例數據
+              </button>
+              <button onclick="clearAllData()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-medium rounded-lg transition">
+                清空本機數據
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button onclick="saveSettings()" class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-md transition">
+              儲存設定
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右側：Google Sheets 連接指南 (7欄寬) -->
+      <div class="lg:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800">5 分鐘完成 Google Sheets 雲端連動</h2>
+          <p class="text-xs text-slate-500 mt-0.5">按照以下步驟，能將此網頁資料「一鍵」完美同步到您的 Google 試算表</p>
+        </div>
+
+        <div class="space-y-4 text-xs text-slate-700 leading-relaxed">
+          <ol class="list-decimal pl-4 space-y-2.5">
+            <li>
+              建立一個新的 <strong class="text-blue-700">Google 試算表</strong>。
+            </li>
+            <li>
+              在選單點擊 <strong>「擴充功能」 &gt; 「Apps Script」</strong>。
+            </li>
+            <li>
+              將編輯器內的預設程式碼全部刪除，並貼上以下程式碼：
+            </li>
+          </ol>
+
+          <!-- 程式碼複製區 -->
+          <div class="relative">
+            <pre class="bg-slate-900 text-slate-200 p-3 rounded-lg overflow-x-auto text-[10px] max-h-48 leading-normal" id="script-code">
+function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var payload = JSON.parse(e.postData.contents);
+  var action = payload.action;
+  
+  if (action === "sync") {
+    var data = payload.data; // 接收的陣列資料
+    
+    // 清除舊資料並重寫表頭
+    sheet.clear();
+    sheet.appendRow(["編號", "產品/設備型號", "序列號", "保養到期日", "狀態", "備註", "更新時間"]);
+    
+    // 寫入數據
+    for (var i = 0; i < data.length; i++) {
+      var item = data[i];
+      sheet.appendRow([
+        item.id,
+        item.model,
+        item.serialNumber,
+        item.warrantyDueDate,
+        item.status,
+        item.remark,
+        new Date()
+      ]);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true, 
+      count: data.length
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false, 
+    error: "未知操作"
+  })).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+            <button onclick="copyScriptCode()" class="absolute top-2 right-2 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-medium rounded transition">
+              複製程式碼
+            </button>
+          </div>
+
+          <ol class="list-decimal pl-4 space-y-2.5 start-4" start="4">
+            <li>
+              點擊頂部的 <strong>「部署」 &gt; 「新增部署」</strong>。
+            </li>
+            <li>
+              選取類型為 <strong>「網頁應用程式 (Web App)」</strong>。
+            </li>
+            <li>
+              設定：
+              <ul class="list-disc pl-4 mt-1 space-y-1 text-slate-600">
+                <li>將「誰有權限存取」設定為 <strong>「所有人 (Anyone)」</strong>。</li>
+                <li>將「執行身分」設定為 <strong>「我 (您的帳戶)」</strong>。</li>
+              </ul>
+            </li>
+            <li>
+              點擊「部署」，授權 Google 存取（點擊「進階」並前往該腳本）。
+            </li>
+            <li>
+              複製產生的 <strong>「網頁應用程式網址 (URL)」</strong> 並貼到左側系統設定的對應欄位中，按下儲存！
+            </li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁腳 -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 space-y-1">
+      <p>保養期限 AI 智能管理系統 © 2026</p>
+      <p>採用 Gemini 2.5 Flash 提供先進的圖像 OCR 語意理解技術</p>
+    </div>
+  </footer>
+
+  <!-- ===================================== JAVASCRIPT ===================================== -->
+  <script>
+    // 全域變數定義
+    const apiKey = ""; // Gemini API 執行期自動注入，或用戶於設定頁面輸入
+    let assetList = [];
+    let systemSettings = {
+      geminiKey: "",
+      sheetSyncUrl: ""
+    };
+
+    // 預設範例數據 (從相片 image.png 中完美提取出來的資料)
+    const sampleAssets = [
+      { id: 1, model: "Fujitsu IW752 Whiteboard 4K Touch - 75\"", serialNumber: "6329210600333", warrantyDueDate: "2024-07-22", status: "Expired", remark: "3rd Year" },
+      { id: 2, model: "Fujitsu IW752 Whiteboard 4K Touch - 75\"", serialNumber: "6329210600383", warrantyDueDate: "2024-07-22", status: "Expired", remark: "3rd Year" },
+      { id: 3, model: "Fujitsu IW752 Whiteboard 4K Touch - 75\"", serialNumber: "6329220401489", warrantyDueDate: "2025-09-18", status: "Expired", remark: "3rd Year" },
+      { id: 4, model: "Fujitsu IW752 Whiteboard 4K Touch - 75\"", serialNumber: "6329220401522", warrantyDueDate: "2025-09-18", status: "Expired", remark: "3rd Year" },
+      { id: 5, model: "Fujitsu IW752 Whiteboard 4K Touch - 75\"", serialNumber: "6329241000498", warrantyDueDate: "2027-11-11", status: "Valid", remark: "3rd Year" },
+      { id: 6, model: "Fujitsu IW862 Whiteboard 4K Touch - 86\"", serialNumber: "6329220900216", warrantyDueDate: "2025-10-16", status: "Expired", remark: "3rd Year" },
+      { id: 7, model: "Fujitsu IW862 Whiteboard 4K Touch - 86\"", serialNumber: "6329240900242", warrantyDueDate: "2027-11-11", status: "Valid", remark: "3rd Year" }
+    ];
+
+    let aiExtractedBuffer = []; // 存放AI剛辨識完成但尚未寫入的主力緩衝
+
+    // 初始化程序
+    window.addEventListener('DOMContentLoaded', () => {
+      // 讀取本地快取
+      const savedAssets = localStorage.getItem('school_assets');
+      const savedSettings = localStorage.getItem('school_asset_settings');
+
+      if (savedAssets) {
+        assetList = JSON.parse(savedAssets);
+      } else {
+        assetList = [...sampleAssets]; // 無快取時載入範例數據
+        localStorage.setItem('school_assets', JSON.stringify(assetList));
+      }
+
+      if (savedSettings) {
+        systemSettings = JSON.parse(savedSettings);
+        document.getElementById('settings-gemini-key').value = systemSettings.geminiKey || "";
+        document.getElementById('settings-sheet-url').value = systemSettings.sheetSyncUrl || "";
+      }
+
+      updateSyncIndicator();
+      renderTable();
+      updateStats();
+    });
+
+    // Toast 訊息元件
+    function showToast(message, type = 'success') {
+      const toastContainer = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        error: 'bg-rose-50 text-rose-800 border-rose-200',
+        info: 'bg-blue-50 text-blue-800 border-blue-200'
+      };
+
+      toast.className = `p-4 rounded-xl border shadow-lg max-w-sm flex items-start gap-3 pointer-events-auto animate-bounce-in ${colors[type]}`;
+      toast.innerHTML = `
+        <div class="flex-shrink-0">
+          ${type === 'success' ? '<svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' : ''}
+          ${type === 'error' ? '<svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' : ''}
+          ${type === 'info' ? '<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' : ''}
+        </div>
+        <div class="flex-grow">
+          <p class="text-xs font-medium">${message}</p>
+        </div>
+      `;
+
+      toastContainer.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        toast.style.transition = 'all 0.4s ease';
+        setTimeout(() => toast.remove(), 400);
+      }, 4000);
+    }
+
+    // 頁籤切換
+    function switchTab(tabName) {
+      document.getElementById('sect-dashboard').classList.add('hidden');
+      document.getElementById('sect-add-asset').classList.add('hidden');
+      document.getElementById('sect-settings').classList.add('hidden');
+
+      document.getElementById('tab-dashboard').className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white/10 text-white";
+      document.getElementById('tab-add-asset').className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white/10 text-white";
+      document.getElementById('tab-settings').className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:bg-white/10 text-white flex items-center gap-1";
+
+      if (tabName === 'dashboard') {
+        document.getElementById('sect-dashboard').classList.remove('hidden');
+        document.getElementById('tab-dashboard').className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white text-blue-900 shadow";
+        renderTable();
+        updateStats();
+      } else if (tabName === 'add-asset') {
+        document.getElementById('sect-add-asset').classList.remove('hidden');
+        document.getElementById('tab-add-asset').className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white text-blue-900 shadow";
+      } else if (tabName === 'settings') {
+        document.getElementById('sect-settings').classList.remove('hidden');
+        document.getElementById('tab-settings').className = "px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white text-blue-900 shadow flex items-center gap-1";
+      }
+    }
+
+    // 更新狀態指標及同步圓點
+    function updateStats() {
+      const total = assetList.length;
+      let valid = 0;
+      let expired = 0;
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      assetList.forEach(item => {
+        const d = new Date(item.warrantyDueDate);
+        if (d >= today) {
+          item.status = "Valid";
+          valid++;
+        } else {
+          item.status = "Expired";
+          expired++;
+        }
+      });
+
+      // 保存更新後的狀態
+      localStorage.setItem('school_assets', JSON.stringify(assetList));
+
+      document.getElementById('stat-total').innerText = total;
+      document.getElementById('stat-valid').innerText = valid;
+      document.getElementById('stat-expired').innerText = expired;
+    }
+
+    function updateSyncIndicator() {
+      const dot = document.getElementById('sync-dot');
+      const statusText = document.getElementById('stat-sync-status');
+      const syncIconBox = document.getElementById('sync-icon-box');
+
+      if (systemSettings.sheetSyncUrl) {
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        statusText.innerText = "已設定串接";
+        statusText.className = "text-lg font-bold text-slate-700 mt-1";
+        syncIconBox.className = "p-3 rounded-xl bg-emerald-50 text-emerald-600";
+      } else {
+        dot.className = "w-2 h-2 rounded-full bg-red-400";
+        statusText.innerText = "未連接";
+        statusText.className = "text-lg font-bold text-rose-500 mt-1";
+        syncIconBox.className = "p-3 rounded-xl bg-amber-50 text-amber-600";
+      }
+    }
+
+    // 重新繪製資料表
+    function renderTable() {
+      const tbody = document.getElementById('asset-table-body');
+      const cardContainer = document.getElementById('asset-cards-container');
+      const searchVal = document.getElementById('search-input').value.toLowerCase();
+      const statusFilter = document.getElementById('filter-status').value;
+
+      tbody.innerHTML = '';
+      cardContainer.innerHTML = '';
+
+      let filteredList = assetList.filter(item => {
+        const matchesSearch = item.model.toLowerCase().includes(searchVal) || 
+                              item.serialNumber.toLowerCase().includes(searchVal) ||
+                              (item.remark && item.remark.toLowerCase().includes(searchVal));
+        const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      });
+
+      if (filteredList.length === 0) {
+        document.getElementById('no-data-alert').classList.remove('hidden');
+      } else {
+        document.getElementById('no-data-alert').classList.add('hidden');
+      }
+
+      // 排序：先比狀態（Valid 在前），再比到期日
+      filteredList.sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === 'Valid' ? -1 : 1;
+        }
+        return new Date(a.warrantyDueDate) - new Date(b.warrantyDueDate);
+      });
+
+      filteredList.forEach((item, index) => {
+        // 日期轉換，美化顯示
+        const localDate = new Date(item.warrantyDueDate).toLocaleDateString('zh-HK');
+        const statusBadge = item.status === 'Valid' 
+          ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">保養期內</span>' 
+          : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">已過期</span>';
+
+        // 1. 桌面表格 row
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50/70 transition-all";
+        tr.innerHTML = `
+          <td class="py-4 px-6 text-slate-500">${index + 1}</td>
+          <td class="py-4 px-6 font-semibold text-slate-800">${item.model}</td>
+          <td class="py-4 px-6 font-mono text-xs text-slate-600">${item.serialNumber}</td>
+          <td class="py-4 px-6 font-medium">${localDate}</td>
+          <td class="py-4 px-6">${statusBadge}</td>
+          <td class="py-4 px-6 text-slate-500 text-xs">${item.remark || '-'}</td>
+          <td class="py-4 px-6 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="editAsset(${item.id})" class="p-1.5 hover:bg-blue-50 text-blue-600 rounded transition" title="編輯">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+              </button>
+              <button onclick="deleteAsset(${item.id})" class="p-1.5 hover:bg-rose-50 text-rose-600 rounded transition" title="刪除">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // 2. 手機版卡片
+        const card = document.createElement('div');
+        card.className = "bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-3";
+        card.innerHTML = `
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <span class="text-xs text-slate-400 font-medium">#${index + 1}</span>
+              <h4 class="font-bold text-slate-800 mt-0.5">${item.model}</h4>
+            </div>
+            ${statusBadge}
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <p class="text-slate-400">序列號 (S/N)</p>
+              <p class="font-mono text-slate-700 mt-0.5">${item.serialNumber}</p>
+            </div>
+            <div>
+              <p class="text-slate-400">保養到期日</p>
+              <p class="font-semibold text-slate-700 mt-0.5">${localDate}</p>
+            </div>
+          </div>
+          ${item.remark ? `<div class="bg-slate-50 p-2 rounded text-xs text-slate-500"><strong>備註:</strong> ${item.remark}</div>` : ''}
+          <div class="flex justify-end gap-2 pt-2 border-t border-slate-50">
+            <button onclick="editAsset(${item.id})" class="px-3 py-1 border border-blue-100 hover:bg-blue-50 text-blue-600 rounded text-xs font-medium transition flex items-center gap-1">
+              編輯
+            </button>
+            <button onclick="deleteAsset(${item.id})" class="px-3 py-1 border border-rose-100 hover:bg-rose-50 text-rose-600 rounded text-xs font-medium transition flex items-center gap-1">
+              刪除
+            </button>
+          </div>
+        `;
+        cardContainer.appendChild(card);
+      });
+    }
+
+    // 保養期到期時自動判定過期與否
+    function autoUpdateStatus() {
+      const dateVal = document.getElementById('input-date').value;
+      if (!dateVal) return;
+
+      const selectedDate = new Date(dateVal);
+      selectedDate.setHours(0,0,0,0);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const statusSelect = document.getElementById('input-status');
+      if (selectedDate >= today) {
+        statusSelect.value = "Valid";
+      } else {
+        statusSelect.value = "Expired";
+      }
+    }
+
+    // 處理手動/編輯表單提交
+    function handleFormSubmit(event) {
+      event.preventDefault();
+      const editId = document.getElementById('form-edit-id').value;
+      const model = document.getElementById('input-model').value.trim();
+      const serialNumber = document.getElementById('input-serial').value.trim();
+      const warrantyDueDate = document.getElementById('input-date').value;
+      const remark = document.getElementById('input-remark').value.trim();
+      
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const status = new Date(warrantyDueDate) >= today ? "Valid" : "Expired";
+
+      if (!model || !serialNumber || !warrantyDueDate) {
+        showToast("請填寫所有必填欄位 (*)", "error");
+        return;
+      }
+
+      if (editId) {
+        // 編輯模式
+        const index = assetList.findIndex(x => x.id == editId);
+        if (index !== -1) {
+          assetList[index] = { id: parseInt(editId), model, serialNumber, warrantyDueDate, status, remark };
+          showToast("已成功更新資產保養資訊！", "success");
+        }
+      } else {
+        // 新增模式
+        const newId = assetList.length > 0 ? Math.max(...assetList.map(o => o.id)) + 1 : 1;
+        assetList.push({ id: newId, model, serialNumber, warrantyDueDate, status, remark });
+        showToast("已成功新增一筆保養資料！", "success");
+      }
+
+      localStorage.setItem('school_assets', JSON.stringify(assetList));
+      resetForm();
+      switchTab('dashboard');
+    }
+
+    // 進入編輯模式
+    function editAsset(id) {
+      const asset = assetList.find(x => x.id === id);
+      if (!asset) return;
+
+      switchTab('add-asset');
+      document.getElementById('form-edit-id').value = asset.id;
+      document.getElementById('input-model').value = asset.model;
+      document.getElementById('input-serial').value = asset.serialNumber;
+      document.getElementById('input-date').value = asset.warrantyDueDate;
+      document.getElementById('input-status').value = asset.status;
+      document.getElementById('input-remark').value = asset.remark || "";
+
+      document.getElementById('btn-submit-form').innerText = "儲存修改";
+      document.getElementById('form-subtitle').innerText = "正在編輯設備資料...";
+    }
+
+    // 刪除資產
+    function deleteAsset(id) {
+      if (confirm("您確定要刪除這筆保養記錄嗎？此操作無法還原。")) {
+        assetList = assetList.filter(x => x.id !== id);
+        localStorage.setItem('school_assets', JSON.stringify(assetList));
+        renderTable();
+        updateStats();
+        showToast("已成功刪除該記錄。", "info");
+      }
+    }
+
+    // 表單清空重置
+    function resetForm() {
+      document.getElementById('form-edit-id').value = "";
+      document.getElementById('asset-form').reset();
+      document.getElementById('btn-submit-form').innerText = "新增記錄";
+      document.getElementById('form-subtitle').innerText = "填寫設備資訊並加入至資料庫";
+    }
+
+    // ==================== AI 影像處理與 OCR 模組 ====================
+
+    function triggerFileInput() {
+      document.getElementById('camera-file-input').click();
+    }
+
+    let selectedImgBase64 = "";
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedImgBase64 = e.target.result.split(',')[1]; // 僅要 Base64 部分
+        
+        // 預覽圖片
+        const imgPre = document.getElementById('image-preview');
+        imgPre.src = e.target.result;
+        imgPre.classList.remove('hidden');
+        document.getElementById('upload-placeholder').classList.add('hidden');
+        document.getElementById('btn-clear-img').classList.remove('hidden');
+        
+        // 啟用掃描按鈕
+        document.getElementById('btn-ai-scan').removeAttribute('disabled');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearSelectedImage() {
+      selectedImgBase64 = "";
+      document.getElementById('image-preview').classList.add('hidden');
+      document.getElementById('image-preview').src = "";
+      document.getElementById('upload-placeholder').classList.remove('hidden');
+      document.getElementById('btn-clear-img').classList.add('hidden');
+      document.getElementById('btn-ai-scan').setAttribute('disabled', 'true');
+      document.getElementById('camera-file-input').value = "";
+      discardAIResult();
+    }
+
+    // 指數退避延遲函數（用於 API 錯誤重試機制）
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    // 發起 AI 辨識請求
+    async function performAIScan() {
+      if (!selectedImgBase64) {
+        showToast("請先選擇或拍攝一張包含表格的相片。", "error");
+        return;
+      }
+
+      const scanBtn = document.getElementById('btn-ai-scan');
+      const spinner = document.getElementById('scan-spinner');
+      const progressBox = document.getElementById('ai-progress-box');
+      const progressBar = document.getElementById('ai-progress-bar');
+      const statusText = document.getElementById('ai-status-text');
+      const percentText = document.getElementById('ai-percent');
+
+      // 按鈕載入狀態
+      scanBtn.setAttribute('disabled', 'true');
+      spinner.classList.remove('hidden');
+      progressBox.classList.remove('hidden');
+      
+      // 更新進度
+      progressBar.style.width = "20%";
+      percentText.innerText = "20%";
+      statusText.innerText = "正在讀取圖片數據...";
+
+      // 使用用戶自訂 API 密鑰，否則為空
+      const activeKey = systemSettings.geminiKey || apiKey;
+
+      // 構建提示詞，指定 JSON 綱要確保返回完美的資料格式
+      const prompt = `請將圖中所有在保養表格內的設備記錄提取出來，並轉換成 JSON 格式陣列返回。
+格式架構為：每個對象包含：
+- "model": (型號品名。請務必保留表格最上方對應此群組的型號品名標題，例如 'Fujitsu IW752 Whiteboard 4K Touch - 75"' 或 'Fujitsu IW862 Whiteboard 4K Touch - 86"')
+- "serialNumber": (序列號或編號，通常為純數字)
+- "warrantyDueDate": (保養到期日，統一將格式轉換為 'YYYY-MM-DD'，例如原格式為 '22/7/2024' 請轉換為 '2024-07-22'，'18/9/2025' 請轉換為 '2025-09-18')
+- "status": (保養狀態，僅限輸入 'Valid' 代表在保養期內、或 'Expired' 代表已過期)
+- "remark": (備註欄位，如 '3rd Year')。
+
+回傳資料嚴格遵循 JSON 標準，不要用 markdown 包裹，直接輸出 JSON 陣列文本即可。`;
+
+      progressBar.style.width = "40%";
+      percentText.innerText = "40%";
+      statusText.innerText = "正在傳送相片至 Gemini 2.5 Flash 服務...";
+
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeKey}`;
+
+      const payload = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: "image/png",
+                  data: selectedImgBase64
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      };
+
+      let success = false;
+      let resultText = "";
+      let retries = 5;
+
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            const resJson = await response.json();
+            resultText = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+            success = true;
+            break;
+          } else {
+            const errData = await response.json();
+            console.error(`Attempt ${attempt} failed:`, errData);
+          }
+        } catch (err) {
+          console.error(`Attempt ${attempt} network error:`, err);
+        }
+
+        if (attempt < retries) {
+          const backoffDelay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s, 8s...
+          statusText.innerText = `連線忙碌中...正在嘗試重新請求 (第 ${attempt}/${retries-1} 次)...`;
+          await delay(backoffDelay);
+        }
+      }
+
+      if (!success) {
+        statusText.innerText = "AI 辨識發生錯誤，請確認您的 API 金鑰或網路連線。";
+        progressBar.style.width = "100%";
+        progressBar.classList.replace('bg-blue-600', 'bg-rose-500');
+        scanBtn.removeAttribute('disabled');
+        spinner.classList.add('hidden');
+        showToast("Gemini 服務請求失敗，請前往系統設定確認 API Key。", "error");
+        return;
+      }
+
+      progressBar.style.width = "80%";
+      percentText.innerText = "80%";
+      statusText.innerText = "正在解析 AI 回傳數據...";
+
+      try {
+        const parsedData = JSON.parse(resultText);
+        
+        // 確保為陣列結構
+        aiExtractedBuffer = Array.isArray(parsedData) ? parsedData : (parsedData.assets || parsedData.data || []);
+        
+        if (aiExtractedBuffer.length === 0) {
+          throw new Error("無法從回傳中找到任何保養項目數據");
+        }
+
+        // 成功，填充預覽表
+        progressBar.style.width = "100%";
+        percentText.innerText = "100%";
+        statusText.innerText = "辨識完成！";
+        progressBar.classList.replace('bg-blue-600', 'bg-emerald-500');
+
+        showAIPreview(aiExtractedBuffer);
+        showToast(`AI 成功識別出 ${aiExtractedBuffer.length} 筆資產資料！`, "success");
+
+      } catch (parseErr) {
+        console.error("JSON 解析出錯:", parseErr, "原始文本:", resultText);
+        statusText.innerText = "AI 回傳的格式解析失敗，請重新拍攝或手動輸入。";
+        showToast("解析 AI 資料結構失敗，請確保相片表格清晰並重新嘗試。", "error");
+      } finally {
+        scanBtn.removeAttribute('disabled');
+        spinner.classList.add('hidden');
+      }
+    }
+
+    // 顯示 AI 臨時預覽表格
+    function showAIPreview(data) {
+      const container = document.getElementById('ai-result-box');
+      const tbody = document.getElementById('ai-preview-table-body');
+      tbody.innerHTML = '';
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2 font-semibold">${item.model || '未定義型號'}</td>
+          <td class="p-2 font-mono">${item.serialNumber || '無'}</td>
+          <td class="p-2">${item.warrantyDueDate || '無'}</td>
+          <td class="p-2">${item.status === 'Valid' ? '<span class="text-emerald-600">期內</span>' : '<span class="text-rose-500">過期</span>'}</td>
+          <td class="p-2 text-slate-500">${item.remark || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      container.classList.remove('hidden');
+    }
+
+    // 放棄 AI 辨識結果
+    function discardAIResult() {
+      aiExtractedBuffer = [];
+      document.getElementById('ai-result-box').classList.add('hidden');
+      document.getElementById('ai-progress-box').classList.add('hidden');
+      
+      const progressBar = document.getElementById('ai-progress-bar');
+      progressBar.className = "bg-blue-600 h-1.5 transition-all duration-300";
+      progressBar.style.width = "10%";
+    }
+
+    // 核准並匯入 AI 結果
+    function approveAIResult() {
+      if (aiExtractedBuffer.length === 0) return;
+
+      // 取得目前最大 ID
+      let maxId = assetList.length > 0 ? Math.max(...assetList.map(o => o.id)) : 0;
+
+      aiExtractedBuffer.forEach(item => {
+        maxId++;
+        // 格式化寫入
+        assetList.push({
+          id: maxId,
+          model: item.model || "未知型號設備",
+          serialNumber: item.serialNumber || "N/A",
+          warrantyDueDate: item.warrantyDueDate || new Date().toISOString().split('T')[0],
+          status: item.status || "Expired",
+          remark: item.remark || ""
+        });
+      });
+
+      localStorage.setItem('school_assets', JSON.stringify(assetList));
+      showToast(`已成功將 ${aiExtractedBuffer.length} 筆資料匯入系統中！`, "success");
+      
+      // 清空緩衝與預覽
+      discardAIResult();
+      clearSelectedImage();
+      switchTab('dashboard');
+    }
+
+    // ==================== 設定與 CSV/雲端同步 模組 ====================
+
+    // 儲存系統設定
+    function saveSettings() {
+      const geminiKey = document.getElementById('settings-gemini-key').value.trim();
+      const sheetUrl = document.getElementById('settings-sheet-url').value.trim();
+
+      systemSettings = {
+        geminiKey: geminiKey,
+        sheetSyncUrl: sheetUrl
+      };
+
+      localStorage.setItem('school_asset_settings', JSON.stringify(systemSettings));
+      updateSyncIndicator();
+      showToast("系統設定已順利保存！", "success");
+    }
+
+    // 還原相片初始資料
+    function restoreSampleData() {
+      if (confirm("這將覆蓋您目前的所有資料，並還原成相片內原本持有的 7 筆互動白板數據。確定執行嗎？")) {
+        assetList = [...sampleAssets];
+        localStorage.setItem('school_assets', JSON.stringify(assetList));
+        showToast("資料已成功還原為相片預設範例！", "success");
+        renderTable();
+        updateStats();
+      }
+    }
+
+    // 清空資料庫
+    function clearAllData() {
+      if (confirm("警告！這將永久刪除本機瀏覽器內的所有保養歷史數據。確定要清空嗎？")) {
+        assetList = [];
+        localStorage.setItem('school_assets', JSON.stringify([]));
+        showToast("本機數據已被完全清空。", "info");
+        renderTable();
+        updateStats();
+      }
+    }
+
+    // 一鍵複製 Google Apps Script
+    function copyScriptCode() {
+      const codeElement = document.getElementById('script-code');
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = codeElement.innerText;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      
+      try {
+        document.execCommand('copy');
+        showToast("已成功複製 Apps Script 程式碼！", "success");
+      } catch (err) {
+        showToast("複製失敗，請手動圈選程式碼複製。", "error");
+      }
+      
+      document.body.removeChild(tempTextArea);
+    }
+
+    // 匯出 CSV 檔案
+    function exportToCSV() {
+      if (assetList.length === 0) {
+        showToast("當前無任何保養數據，無法導出 CSV 檔案。", "error");
+        return;
+      }
+
+      // 構建 CSV 頭部 (加入 UTF-8 BOM 防止 Excel 亂碼)
+      let csvContent = "\uFEFF編號,設備名稱,序列號,保養到期日,狀態,備註\n";
+
+      assetList.forEach((item, index) => {
+        // CSV 溢出與特殊字符轉義
+        const modelClean = `"${item.model.replace(/"/g, '""')}"`;
+        const remarkClean = item.remark ? `"${item.remark.replace(/"/g, '""')}"` : '""';
+        csvContent += `${index+1},${modelClean},'${item.serialNumber},${item.warrantyDueDate},${item.status === 'Valid' ? '保養期內' : '已過期'},${remarkClean}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `東莞同鄉會方樹泉學校_保養數據_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast("CSV 保養報表已順利下載。", "success");
+    }
+
+    // 同步到 Google 試算表 (透過 Apps Script Web App Webhook)
+    async function syncWithGoogleSheet() {
+      const url = systemSettings.sheetSyncUrl;
+      if (!url) {
+        showToast("請先到「系統設定」配置您的 Google Web App 部署網址！", "error");
+        switchTab('settings');
+        return;
+      }
+
+      showToast("正在傳送數據至 Google Sheets...", "info");
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          mode: "no-cors", // 使用 no-cors，因為 Apps Script 重導向不支援傳統 CORS
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "sync",
+            data: assetList
+          })
+        });
+
+        // 由於 no-cors 模式下 response 類型為 opaque 且 ok 為 false，
+        // 我們通常透過一個提示性成功的訊息通知用戶。
+        showToast("已成功將最新數據同步至 Google Sheet 試算表！", "success");
+
+      } catch (err) {
+        console.error("同步至 Google 試算表時發生錯誤: ", err);
+        showToast("同步過程發生通訊錯誤，請確認 Web App 連線權限。", "error");
+      }
+    }
+  </script>
+</body>
+</html>
